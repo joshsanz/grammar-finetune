@@ -1,0 +1,12 @@
+[project]
+name = "llms"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "ebooklib>=0.19",
+    "html-to-markdown>=1.9.0",
+    "markdown>=3.8.2",
+    "ruff>=0.12.11",
+]
