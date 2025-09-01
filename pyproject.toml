@@ -11,5 +11,6 @@ dependencies = [
     "lxml>=6.0.1",
     "markdown>=3.8.2",
     "ruff>=0.12.11",
+    "tqdm>=4.67.1",
     "zstandard>=0.24.0",
 ]
