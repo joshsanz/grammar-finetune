@@ -35,6 +35,7 @@ def epub_to_clean_md(epub_path, output_dir):
 
             print(f"Converted {item.get_name()} to {output_file_path}")
 
+
 def main():
     if len(sys.argv) != 3:
         print("Usage: python epub-to-clean-md.py input.epub output_directory/")
