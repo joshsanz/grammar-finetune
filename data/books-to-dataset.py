@@ -104,7 +104,7 @@ def create_dataset(input_dirs, output_dir, npara=5):
 
     ds = Dataset.from_generator(dataset_generator, gen_kwargs={'input_dirs': input_dirs, 'npara': npara})
     # Create a train-test split
-    ds = ds.train_test_split(test_size=0.1, seed=42)  # type: ignore
+    ds = ds.train_test_split(test_size=0.1, shuffle=True, seed=42)  # type: ignore
     train_file_path = os.path.join(output_dir, "train", 'books_dataset.parquet')
     ds["train"].to_parquet(train_file_path)  # type: ignore
     test_file_path = os.path.join(output_dir, "test", 'books_dataset.parquet')
