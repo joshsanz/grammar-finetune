@@ -122,7 +122,7 @@ trainer = SFTTrainer(
     model = model,
     tokenizer = tokenizer,
     train_dataset = dataset["train"],
-    eval_dataset = dataset["test"], # Can set up evaluation!
+    eval_dataset = dataset["test[:2000]"], # Evaluate on first 2000 samples of test set
     args = SFTConfig(
         # Data and batching
         dataset_text_field = config["training"]["dataset_text_field"],

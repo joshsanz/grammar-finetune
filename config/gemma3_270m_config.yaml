@@ -25,10 +25,10 @@ peft:
 
 training:
   dataset_text_field: "text"
-  max_length: 4096
+  max_length: 1024
   per_device_train_batch_size: 16
   per_device_eval_batch_size: 64
-  gradient_accumulation_steps: 2
+  gradient_accumulation_steps: 1
   warmup_steps: 50
   max_steps: -1
   num_train_epochs: 1
