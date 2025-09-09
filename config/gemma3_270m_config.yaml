@@ -1,0 +1,60 @@
+model:
+  model_name: "unsloth/gemma-3-270m-it"
+  max_seq_length: 2048
+  load_in_4bit: false
+  load_in_8bit: false
+  full_finetuning: false
+
+peft:
+  r: 128
+  target_modules:
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+  lora_alpha: 128
+  lora_dropout: 0
+  bias: "none"
+  use_gradient_checkpointing: "unsloth"
+  random_state: 3407
+  use_rslora: false
+  loftq_config: null
+
+training:
+  dataset_text_field: "text"
+  max_length: 4096
+  per_device_train_batch_size: 16
+  per_device_eval_batch_size: 64
+  gradient_accumulation_steps: 2
+  warmup_steps: 50
+  max_steps: -1
+  num_train_epochs: 1
+  eval_strategy: "steps"
+  eval_steps: 100
+  learning_rate: 2e-5
+  logging_steps: 10
+  optim: "adamw_8bit"
+  weight_decay: 0.01
+  lr_scheduler_type: "linear"
+  seed: 3407
+  output_dir: "outputs"
+  report_to: "none"
+
+data:
+  dataset_path: "data/gec-dataset"
+  system_prompt_path: "config/prompt.txt"
+  chat_template: "gemma3"
+
+inference:
+  temperature: 1.0
+  top_p: 0.95
+  top_k: 64
+  max_new_tokens: 125
+  cache_implementation: "dynamic"
+
+masking:
+  instruction_part: "<start_of_turn>user\n"
+  response_part: "<start_of_turn>model\n"
