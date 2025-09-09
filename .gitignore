@@ -5,8 +5,18 @@ build/
 dist/
 wheels/
 *.egg-info
+.ruff_cache/
 
 # Virtual environments
 .venv
 data/
+
+# Assistant files
+CLAUDE.md
+GEMINI.md
+
+# Generated files
+*.png
+outputs/
+unsloth_compiled_cache/
 

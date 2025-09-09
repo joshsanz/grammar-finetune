@@ -6,7 +6,6 @@
 import argparse
 import os
 from datasets import load_dataset
-import random
 import json
 import warnings
 import shutil
@@ -25,12 +24,9 @@ def convert_to_chatml(system, user, asst):
 
 def format_for_mlx(example, prompt):
     # Prepare the input text with the prompt
-    input_text = "[BEGINING OF CONTENT]\n" + example['original'] + "\n[END OF CONTENT]"
-    # The output is just the corrected text
-    output_text = (
-        example['corrected'] if isinstance(example['corrected'], str)
-        else random.choice(example['corrected'])
-    )
+    input_text = "[BEGINNING OF CONTENT]\n" + example['original'] + "\n[END OF CONTENT]"
+    # The output is the corrected text (now single values per row)
+    output_text = example['corrected']
     return {"text": convert_to_chatml(prompt, input_text, output_text)}
 
 
@@ -67,7 +63,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Format a dataset for MLX LoRA example.")
     parser.add_argument('-i', '--input_dir', required=True, help='Input directory containing the dataset.')
     parser.add_argument('-o', '--output_dir', required=True, help='Output directory to save the formatted dataset.')
-    parser.add_argument('-p', '--prompt_file', default="configs/prompt.txt", help='File containing the system prompt to use.')
+    parser.add_argument('-p', '--prompt_file', default="config/prompt.txt", help='File containing the system prompt to use.')
     return parser.parse_args()
 
 

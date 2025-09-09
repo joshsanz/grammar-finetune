@@ -23,7 +23,7 @@ done
 
 # Convert book .mds to a single dataset
 echo "Creating clean example dataset from books"
-python books-to-dataset.py -o books/ -i $(ls *.epub | sed 's/\.epub//g' | tr '\n' ' ') -n 2 || exit 1
+python books-to-dataset.py -o books/ -i $(ls *.epub | sed 's/\.epub//g' | tr '\n' ' ') -n 5 || exit 1
 
 # Combine with existing GEC datasets
 echo "Merging all datasets into gec-dataset"

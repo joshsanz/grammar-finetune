@@ -26,7 +26,6 @@ The dataset is saved in parquet format, with separate files for training and tes
 ## Format
 The dataset contains the following columns:
 - `source`: The source of the text (e.g., book title or grammar dataset name)
-- `chapter`: The chapter or section name (if applicable)
 - `original`: The original text content
 - `corrected`: The corrected text content (or a copy of original if not applicable)
 """
@@ -46,16 +45,36 @@ def _remove_command(text):
     return ":".join(segments[1:]).strip() if len(segments) > 1 else text.strip()
 
 
-def _to_list(text):
-    if isinstance(text, list):
-        return [[t] for t in text]
-    return [text]
+def _expand_corrections(examples):
+    """Expand examples with multiple corrections into separate rows"""
+    expanded_sources = []
+    expanded_originals = []
+    expanded_corrected = []
+
+    for i, original in enumerate(examples['original']):
+        corrected_list = examples['corrected'][i] if isinstance(examples['corrected'][i], list) else [examples['corrected'][i]]
+        source = examples['source'][i] if 'source' in examples else None
+
+        for corrected in corrected_list:
+            expanded_originals.append(original)
+            expanded_corrected.append(corrected)
+            if source:
+                expanded_sources.append(source)
+
+    result = {
+        'original': expanded_originals,
+        'corrected': expanded_corrected
+    }
+    if expanded_sources:
+        result['source'] = expanded_sources
+
+    return result
 
 
 def load_clean_dataset(path, split='train'):
     dataset = load_dataset(path, split=split)
     # For clean dataset, original and corrected are the same
-    dataset = dataset.map(lambda x: {'original': x['text'], 'corrected': _to_list(x['text'])},
+    dataset = dataset.map(lambda x: {'original': x['text'], 'corrected': x['text']},
                           batched=True)
     dataset = dataset.remove_columns(['text', 'chapter'])
     return dataset
@@ -75,7 +94,7 @@ def load_grammar_dataset(path, split='train'):
         dataset = dataset.remove_columns(['_id', 'task'])
         dataset = dataset.map(lambda x: {"source": _source(x, "grammarly/coedit"),
                                          "original": _remove_command(x['original']),
-                                         "corrected": _to_list(x['corrected'])}, batched=True)
+                                         "corrected": x['corrected']}, batched=True)
     # JHU CLSP JFLEG
     elif path == "jhu-clsp/jfleg":
         split = {"train": "validation", "test": "test"}[split]  # JFLEG has no train split
@@ -83,7 +102,8 @@ def load_grammar_dataset(path, split='train'):
         dataset = dataset.rename_column('sentence', 'original')
         dataset = dataset.rename_column('corrections', 'corrected')
         dataset = dataset.map(lambda x: {"source": _source(x, "jhu-clsp/jfleg")}, batched=True)
-        # JFLEG is already in list format for corrected
+        # JFLEG has multiple corrections - expand into separate rows
+        dataset = dataset.map(_expand_corrections, batched=True)
     # AgentLans Grammar Correction
     elif path == "agentlans/grammar-correction":
         # grammar-correction has no test split
@@ -91,8 +111,7 @@ def load_grammar_dataset(path, split='train'):
         dataset = load_dataset(path, split=split)
         dataset = dataset.rename_column('input', 'original')
         dataset = dataset.rename_column('output', 'corrected')
-        dataset = dataset.map(lambda x: {"source": _source(x, "agentlans/grammar-correction"),
-                                         "corrected": _to_list(x['corrected'])}, batched=True)
+        dataset = dataset.map(lambda x: {"source": _source(x, "agentlans/grammar-correction")}, batched=True)
     else:
         raise ValueError(f"Unsupported grammar dataset: {path}")
 
@@ -104,9 +123,8 @@ def merge_datasets(clean_dataset_path, grammar_datasets_paths, output_dir):
 
     Dataset format:
     - source: source of the text (e.g., book title or grammar dataset name)
-    - chapter: chapter or section name (if applicable)
     - original: the original text content
-    - corrected: the corrected text content (or a copy of original if not applicable)
+    - corrected: the corrected text content (one correction per row, expanded from lists)
     """
     os.makedirs(output_dir, exist_ok=True)
 
