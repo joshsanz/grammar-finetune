@@ -60,6 +60,13 @@ Training parameters are specified in YAML config files (e.g., `config/gemma3_270
 - Training hyperparameters: learning rate, batch size, epochs
 - Data processing: chat template, system prompt path
 - Output and evaluation settings
+- MLOps logging, e.g. WandB or MLflow
+
+To enable MLflow with your hosted server, set environment vars with
+
+```sh
+source mlflow_environment
+```
 
 **Data Format:**
 The training uses ChatML format with conversation structure:

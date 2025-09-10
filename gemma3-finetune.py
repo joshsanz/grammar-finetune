@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from unsloth import FastModel # Must import first to patch other libraries
-import mlflow
+from unsloth import FastVisionModel # Must import first to patch other libraries
+import json
 import os
+import sys
 import torch
 import yaml
 from datasets import DatasetDict, load_dataset
@@ -14,6 +15,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("Train")
+logger.setLevel(logging.INFO)
 
 # Ensure MLflow tracking is set up
 assert os.getenv("MLFLOW_TRACKING_URI") is not None, "Please set MLFLOW_TRACKING_URI environment variable"
@@ -29,9 +31,11 @@ else:
     logger.info("HF_MLFLOW_LOG_ARTIFACTS is set, will log model artifacts to MLflow")
 
 # Load configuration
-with open("config/gemma3_270m_config.yaml", "r") as f:
+config_path = sys.argv[1] if len(sys.argv) > 1 else "config/gemma3_270m_config.yaml"
+logger.info(f"Loading configuration from {config_path}")
+with open(config_path, "r") as f:
     config = yaml.safe_load(f)
-    config["training"]["learning_rate"] = float(config["training"]["learning_rate"])
+config["training"]["learning_rate"] = float(config["training"]["learning_rate"])
 
 # Model name format: org/gemma-3{model_n}-{model_params}-{model_it}-other_details
 model_3_n = config["model"]["model_name"].split("/")[-1].split("-")[1]
@@ -46,12 +50,16 @@ elif config["model"]["load_in_4bit"]:
     quant = "Q4_0"
 
 if os.getenv("MLFLOW_TAGS") is None:
-    tags_str = f"gemma3,{model_params},{model_it},{quant}"
+    tags_str = json.dumps({
+        "model": "gemma3",
+        "params": model_params,
+        "pretrain": model_it,
+        "quant": quant})
     os.environ["MLFLOW_TAGS"] = tags_str
     logger.info(f"MLFLOW_TAGS not set; defaulting to: {tags_str}")
 
 # Load model and tokenizer
-model, tokenizer = FastModel.from_pretrained(
+model, tokenizer = FastVisionModel.from_pretrained(
     model_name = config["model"]["model_name"],
     max_seq_length = config["model"]["max_seq_length"], # Choose any for long context!
     load_in_4bit = config["model"]["load_in_4bit"],  # 4 bit quantization to reduce memory
@@ -61,7 +69,7 @@ model, tokenizer = FastModel.from_pretrained(
 )
 
 # We now add LoRA adapters so we only need to update a small amount of parameters!
-model = FastModel.get_peft_model(
+model = FastVisionModel.get_peft_model(
     model,
     # Only finetune certain parts of the model
     finetune_vision_layers     = False, # Turn off for just text!
@@ -103,7 +111,7 @@ tokenizer = get_chat_template(
 
 # Load dataset
 dataset_train = load_dataset(config["data"]["dataset_path"], split = "train")
-dataset_test = load_dataset(config["data"]["dataset_path"], split = "test[:2000]") # Use first 2000 samples of test set for eval
+dataset_test = load_dataset(config["data"]["dataset_path"], split = "test[:1000]") # Use first 1000 samples of test set for eval
 dataset = DatasetDict({"train": dataset_train, "test": dataset_test})
 
 # Use `convert_to_chatml` to try converting datasets to the correct format for finetuning purposes!
@@ -175,6 +183,8 @@ trainer = SFTTrainer(
         seed = config["training"]["seed"],
         # Saving and logging
         output_dir = config["training"]["output_dir"],
+        save_steps = config["training"]["save_steps"],
+        save_total_limit= config["training"]["save_total_limit"],
         report_to = config["training"]["report_to"], # Use this for WandB etc
     ),
 )
