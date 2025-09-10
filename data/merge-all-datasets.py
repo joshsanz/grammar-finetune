@@ -118,13 +118,15 @@ def load_grammar_dataset(path, split='train'):
     return dataset
 
 
-def merge_datasets(clean_dataset_path, grammar_datasets_paths, output_dir):
+def merge_datasets(clean_dataset_path, grammar_datasets_paths,
+                   output_dir, seed):
     """Merge multiple datasets into a single dataset and save as a parquet file.
 
     Dataset format:
     - source: source of the text (e.g., book title or grammar dataset name)
     - original: the original text content
     - corrected: the corrected text content (one correction per row, expanded from lists)
+    - seed: random seed for shuffling the merged dataset
     """
     os.makedirs(output_dir, exist_ok=True)
 
@@ -148,6 +150,10 @@ def merge_datasets(clean_dataset_path, grammar_datasets_paths, output_dir):
         merged_dataset = concatenate_datasets(all_datasets) # type: ignore
         print(f"Merged dataset has {len(merged_dataset)} samples.")
 
+        print("Shuffling merged dataset...")
+        merged_dataset = merged_dataset.shuffle(seed=seed)
+        merged_dataset.flatten_indices()
+
         output_path = os.path.join(output_dir, split, 'merged_dataset.parquet')
         print(f"Saving merged dataset to {output_path}")
         merged_dataset.to_parquet(output_path)
@@ -160,6 +166,7 @@ def parse_args():
     parser.add_argument('-c', '--clean_dataset', required=True, help='Path to the clean dataset (e.g., books dataset).')
     parser.add_argument('-g', '--grammar_datasets', required=True, help='File containing list of grammar datasets to include.')
     parser.add_argument('-o', '--output_dir', required=True, help='Output directory to save the merged dataset.')
+    parser.add_argument('-s', '--seed', type=int, default=42, help='Random seed for shuffling the merged dataset.')
     return parser.parse_args()
 
 
@@ -170,13 +177,15 @@ def main():
         grammar_datasets = [line.strip() for line in f
                             if line.strip() and not line.startswith('#')]
     output_dir = args.output_dir
+    seed = args.seed
 
     os.makedirs(output_dir, exist_ok=True)
     with open(os.path.join(output_dir, 'README.md'), 'w', encoding='utf-8') as f:
         f.write(README.format(clean_dataset=clean_dataset,
                               grammar_datasets='\n'.join([f"- {d}" for d in grammar_datasets])))
 
-    merge_datasets(clean_dataset, grammar_datasets, output_dir)
+    merge_datasets(clean_dataset, grammar_datasets,
+                   output_dir, seed)
 
 
 if __name__ == "__main__":

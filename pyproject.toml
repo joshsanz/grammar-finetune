@@ -32,6 +32,9 @@ dependencies = [
     "zstandard>=0.23.0",
     "matplotlib>=3.10.6",
     "seaborn>=0.13.2",
+    "wandb>=0.21.3",
+    "mlflow>=3.3.2",
+    "psutil>=7.0.0",
 ]
 
 [tool.uv.sources]
