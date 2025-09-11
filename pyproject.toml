@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "accelerate==1.10.1",
-    "bitsandbytes==0.47.0",
+#    "bitsandbytes==0.47.0",
     "datasets>=3.6.0",
     "ebooklib>=0.19",
     "hf-transfer>=0.1.9",
@@ -23,12 +23,12 @@ dependencies = [
     "torchaudio==2.7.1",
     "torchvision==0.22.1",
     "transformers==4.55.2",
-    "triton==3.3.1",
+#    "triton==3.3.1",
     "trl==0.22.2",
-    "unsloth==2025.9.2",
-    "unsloth-zoo==2025.9.3",
-    "vllm==0.10.1.1",
-    "xformers==0.0.31",
+#    "unsloth==2025.9.2",
+#    "unsloth-zoo==2025.9.3",
+#    "vllm==0.10.1.1",
+#    "xformers==0.0.31",
     "zstandard>=0.23.0",
     "matplotlib>=3.10.6",
     "seaborn>=0.13.2",
@@ -37,12 +37,12 @@ dependencies = [
     "psutil>=7.0.0",
 ]
 
-[tool.uv.sources]
-torch = { index = "pytorch-cu128" }
-torchvision = { index = "pytorch-cu128" }
-torchaudio = { index = "pytorch-cu128" }
+# [tool.uv.sources]
+# torch = { index = "pytorch-cu128" }
+# torchvision = { index = "pytorch-cu128" }
+# torchaudio = { index = "pytorch-cu128" }
 
-[[tool.uv.index]]
-name = "pytorch-cu128"
-url = "https://download.pytorch.org/whl/cu128"
-explicit = true
+# [[tool.uv.index]]
+# name = "pytorch-cu128"
+# url = "https://download.pytorch.org/whl/cu128"
+# explicit = true
