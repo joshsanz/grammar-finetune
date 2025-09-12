@@ -1,17 +1,19 @@
 # -*- coding: utf-8 -*-
 
-from unsloth import FastVisionModel # Must import first to patch other libraries
+from unsloth import FastModel # Must import first to patch other libraries
 import json
 import os
 import sys
 import torch
 import yaml
 from datasets import DatasetDict, load_dataset
-from transformers import TextStreamer
+from transformers import TextStreamer, EarlyStoppingCallback
 from trl import SFTTrainer, SFTConfig
 from unsloth.chat_templates import get_chat_template
 from unsloth.chat_templates import train_on_responses_only
 import logging
+import mlflow
+import mlflow.data
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("Train")
@@ -58,8 +60,16 @@ if os.getenv("MLFLOW_TAGS") is None:
     os.environ["MLFLOW_TAGS"] = tags_str
     logger.info(f"MLFLOW_TAGS not set; defaulting to: {tags_str}")
 
+# Enable MLflow autologging for transformers with dataset tracking
+mlflow.transformers.autolog(
+    # log_input_examples=True,
+    # log_model_signatures=True,
+    # log_models=True,
+    log_datasets=True
+)
+
 # Load model and tokenizer
-model, tokenizer = FastVisionModel.from_pretrained(
+model, tokenizer = FastModel.from_pretrained(
     model_name = config["model"]["model_name"],
     max_seq_length = config["model"]["max_seq_length"], # Choose any for long context!
     load_in_4bit = config["model"]["load_in_4bit"],  # 4 bit quantization to reduce memory
@@ -69,7 +79,7 @@ model, tokenizer = FastVisionModel.from_pretrained(
 )
 
 # We now add LoRA adapters so we only need to update a small amount of parameters!
-model = FastVisionModel.get_peft_model(
+model = FastModel.get_peft_model(
     model,
     # Only finetune certain parts of the model
     finetune_vision_layers     = False, # Turn off for just text!
@@ -111,7 +121,7 @@ tokenizer = get_chat_template(
 
 # Load dataset
 dataset_train = load_dataset(config["data"]["dataset_path"], split = "train")
-dataset_test = load_dataset(config["data"]["dataset_path"], split = "test[:1000]") # Use first 1000 samples of test set for eval
+dataset_test = load_dataset(config["data"]["dataset_path"], split = "test[:250]") # Use first 250 samples of test set for eval
 dataset = DatasetDict({"train": dataset_train, "test": dataset_test})
 
 # Use `convert_to_chatml` to try converting datasets to the correct format for finetuning purposes!
@@ -152,42 +162,82 @@ dataset = dataset.map(formatting_prompts_func, batched = True)
 logger.debug("dataset[100]['text']:")
 logger.debug(dataset["train"][100]['text'])
 
+# Create MLflow dataset objects for tracking
+logger.info("Creating MLflow dataset objects for tracking...")
+mlflow_train_dataset = mlflow.data.from_huggingface(
+    dataset["train"],
+    data_dir=config["data"]["dataset_path"],
+    name="training_dataset"
+)
+mlflow_test_dataset = mlflow.data.from_huggingface(
+    dataset["test"],
+    data_dir=config["data"]["dataset_path"],
+    name="test_dataset"
+)
+
+# Log datasets as inputs to MLflow
+logger.info("Logging datasets to MLflow...")
+mlflow.log_input(mlflow_train_dataset, context="training")
+mlflow.log_input(mlflow_test_dataset, context="evaluation")
+
 ### Train the model
 # Now let's train our model. We use the `SFTTrainer` from `trl` which uses the Transformers
 # Trainer utility under the hood.
+scheduler_kwargs = {}
+if config["training"]["lr_scheduler_type"] == "cosine_with_min_lr":
+    scheduler_kwargs["min_lr_rate"] = 0.1 # Cosine with min lr of 10% initial lr
+
+sft_config = SFTConfig(
+    # Data and batching
+    dataset_text_field = config["training"]["dataset_text_field"],
+    max_length = config["training"]["max_length"], # Ensure this is <= model max length
+    # TODO: packing for inputs
+    per_device_train_batch_size = config["training"]["per_device_train_batch_size"],
+    per_device_eval_batch_size = config["training"]["per_device_eval_batch_size"],
+    gradient_accumulation_steps = config["training"]["gradient_accumulation_steps"], # Use GA to mimic batch size!
+    # Training length
+    warmup_steps = config["training"]["warmup_steps"],
+    num_train_epochs = config["training"]["num_train_epochs"], # Set this for 1 full training run.
+    max_steps = config["training"]["max_steps"],
+    eval_strategy = config["training"]["eval_strategy"], # "steps" or "epoch" or "no"
+    eval_steps = config["training"]["eval_steps"], # Eval every N steps if using "steps"
+    eval_on_start = True, # Evaluate before training starts
+    # Optimizer settings
+    learning_rate = config["training"]["learning_rate"], # Reduce to 2e-5 for long training runs
+    optim = config["training"]["optim"],
+    weight_decay = config["training"]["weight_decay"],
+    lr_scheduler_type = config["training"]["lr_scheduler_type"],
+    lr_scheduler_kwargs=scheduler_kwargs,
+    logging_steps = config["training"]["logging_steps"],
+    seed = config["training"]["seed"],
+    # Early stopping
+    load_best_model_at_end = True,       # MUST USE for early stopping
+    metric_for_best_model = "eval_loss", # metric we want to early stop on
+    greater_is_better = False,           # the lower the eval loss, the better
+    # Saving and logging
+    output_dir = config["training"]["output_dir"],
+    save_steps = config["training"]["save_steps"],
+    save_total_limit= config["training"]["save_total_limit"],
+    report_to = config["training"]["report_to"], # Use this for WandB etc
+)
+
 trainer = SFTTrainer(
     model = model,
-    tokenizer = tokenizer,
+    processing_class = tokenizer,
     train_dataset = dataset["train"],
     eval_dataset = dataset["test"], # Evaluate on first 2000 samples of test set
-    args = SFTConfig(
-        # Data and batching
-        dataset_text_field = config["training"]["dataset_text_field"],
-        max_length = config["training"]["max_length"], # Ensure this is <= model max length
-        # TODO: packing for inputs
-        per_device_train_batch_size = config["training"]["per_device_train_batch_size"],
-        per_device_eval_batch_size = config["training"]["per_device_eval_batch_size"],
-        gradient_accumulation_steps = config["training"]["gradient_accumulation_steps"], # Use GA to mimic batch size!
-        # Training length
-        warmup_steps = config["training"]["warmup_steps"],
-        num_train_epochs = config["training"]["num_train_epochs"], # Set this for 1 full training run.
-        max_steps = config["training"]["max_steps"],
-        eval_strategy = config["training"]["eval_strategy"], # "steps" or "epoch" or "no"
-        eval_steps = config["training"]["eval_steps"], # Eval every N steps if using "steps"
-        # Optimizer settings
-        learning_rate = config["training"]["learning_rate"], # Reduce to 2e-5 for long training runs
-        optim = config["training"]["optim"],
-        weight_decay = config["training"]["weight_decay"],
-        lr_scheduler_type = config["training"]["lr_scheduler_type"],
-        logging_steps = config["training"]["logging_steps"],
-        seed = config["training"]["seed"],
-        # Saving and logging
-        output_dir = config["training"]["output_dir"],
-        save_steps = config["training"]["save_steps"],
-        save_total_limit= config["training"]["save_total_limit"],
-        report_to = config["training"]["report_to"], # Use this for WandB etc
-    ),
+    args = sft_config,
 )
+
+# Add early stopping callback to trainer
+early_stopping_callback = EarlyStoppingCallback(
+    early_stopping_patience = 3,     # How many steps we will wait if the eval loss doesn't decrease
+                                     # For example the loss might increase, but decrease after 3 steps
+    early_stopping_threshold = 0.0,  # Can set higher - sets how much loss should decrease by until
+                                     # we consider early stopping. For eg 0.01 means if loss was
+                                     # 0.02 then 0.01, we consider to early stop the run.
+)
+trainer.add_callback(early_stopping_callback)
 
 # We also use Unsloth's `train_on_completions` method to only train on the assistant
 # outputs and ignore the loss on the user's inputs. This helps increase accuracy of finetunes!
@@ -262,6 +312,14 @@ _ = model.generate(
 model_ft_name = f"gemma-{model_3_n}-{model_params}-{model_it}-gec"
 model.save_pretrained(model_ft_name)  # Local saving
 tokenizer.save_pretrained(model_ft_name)
+
+# Log the model to MLflow
+mlflow.transformers.log_model(transformers_model=model_ft_name,
+                              name="unsloth_model",
+                              registered_model_name=model_ft_name,
+                              input_example=text,
+                              tags=json.loads(os.getenv("MLFLOW_TAGS")))
+
 # model.push_to_hub(f"your_name/{model_ft_name}", token = "...") # Online saving
 # tokenizer.push_to_hub(f"your_name/{model_ft_name}", token = "...") # Online saving
 
