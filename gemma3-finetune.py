@@ -8,12 +8,21 @@ import torch
 import yaml
 from datasets import DatasetDict, load_dataset
 from transformers import TextStreamer, EarlyStoppingCallback
-from trl import SFTTrainer, SFTConfig
+from trl import SFTTrainer
+from transformers import TrainingArguments
 from unsloth.chat_templates import get_chat_template
 from unsloth.chat_templates import train_on_responses_only
 import logging
 import mlflow
 import mlflow.data
+
+# Import custom metrics if available (for hyperparameter tuning)
+try:
+    from metrics import compute_metrics
+    CUSTOM_METRICS_AVAILABLE = True
+except ImportError:
+    CUSTOM_METRICS_AVAILABLE = False
+    compute_metrics = None
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("Train")
@@ -61,12 +70,12 @@ if os.getenv("MLFLOW_TAGS") is None:
     logger.info(f"MLFLOW_TAGS not set; defaulting to: {tags_str}")
 
 # Enable MLflow autologging for transformers with dataset tracking
-mlflow.transformers.autolog(
-    # log_input_examples=True,
-    # log_model_signatures=True,
-    # log_models=True,
-    log_datasets=True
-)
+# mlflow.transformers.autolog(  # Commented out due to import issues
+#     log_input_examples=True,
+#     log_model_signatures=True,
+#     log_models=True,
+#     log_datasets=True
+# )
 
 # Load model and tokenizer
 model, tokenizer = FastModel.from_pretrained(
@@ -187,38 +196,31 @@ scheduler_kwargs = {}
 if config["training"]["lr_scheduler_type"] == "cosine_with_min_lr":
     scheduler_kwargs["min_lr_rate"] = 0.1 # Cosine with min lr of 10% initial lr
 
-sft_config = SFTConfig(
-    # Data and batching
-    dataset_text_field = config["training"]["dataset_text_field"],
-    max_length = config["training"]["max_length"], # Ensure this is <= model max length
-    # TODO: packing for inputs
-    per_device_train_batch_size = config["training"]["per_device_train_batch_size"],
-    per_device_eval_batch_size = config["training"]["per_device_eval_batch_size"],
-    gradient_accumulation_steps = config["training"]["gradient_accumulation_steps"], # Use GA to mimic batch size!
-    # Training length
-    warmup_steps = config["training"]["warmup_steps"],
-    num_train_epochs = config["training"]["num_train_epochs"], # Set this for 1 full training run.
-    max_steps = config["training"]["max_steps"],
-    eval_strategy = config["training"]["eval_strategy"], # "steps" or "epoch" or "no"
-    eval_steps = config["training"]["eval_steps"], # Eval every N steps if using "steps"
-    eval_on_start = True, # Evaluate before training starts
-    # Optimizer settings
-    learning_rate = config["training"]["learning_rate"], # Reduce to 2e-5 for long training runs
-    optim = config["training"]["optim"],
-    weight_decay = config["training"]["weight_decay"],
-    lr_scheduler_type = config["training"]["lr_scheduler_type"],
+# Create training arguments - using TrainingArguments instead of SFTConfig
+training_args = TrainingArguments(
+    output_dir=config["training"]["output_dir"],
+    per_device_train_batch_size=config["training"]["per_device_train_batch_size"],
+    per_device_eval_batch_size=config["training"]["per_device_eval_batch_size"],
+    gradient_accumulation_steps=config["training"]["gradient_accumulation_steps"],
+    warmup_steps=config["training"]["warmup_steps"],
+    num_train_epochs=config["training"]["num_train_epochs"],
+    max_steps=config["training"]["max_steps"],
+    learning_rate=config["training"]["learning_rate"],
+    weight_decay=config["training"]["weight_decay"],
+    lr_scheduler_type=config["training"]["lr_scheduler_type"],
     lr_scheduler_kwargs=scheduler_kwargs,
-    logging_steps = config["training"]["logging_steps"],
-    seed = config["training"]["seed"],
-    # Early stopping
-    load_best_model_at_end = True,       # MUST USE for early stopping
-    metric_for_best_model = "eval_loss", # metric we want to early stop on
-    greater_is_better = False,           # the lower the eval loss, the better
-    # Saving and logging
-    output_dir = config["training"]["output_dir"],
-    save_steps = config["training"]["save_steps"],
-    save_total_limit= config["training"]["save_total_limit"],
-    report_to = config["training"]["report_to"], # Use this for WandB etc
+    logging_steps=config["training"]["logging_steps"],
+    eval_strategy=config["training"]["eval_strategy"],
+    eval_steps=config["training"]["eval_steps"],
+    save_steps=config["training"]["save_steps"],
+    save_total_limit=config["training"]["save_total_limit"],
+    load_best_model_at_end=True,
+    metric_for_best_model="eval_loss",
+    greater_is_better=False,
+    seed=config["training"]["seed"],
+    report_to=config["training"]["report_to"],
+    # Add custom compute_metrics if available
+    # compute_metrics=compute_metrics if CUSTOM_METRICS_AVAILABLE else None,
 )
 
 trainer = SFTTrainer(
@@ -226,7 +228,7 @@ trainer = SFTTrainer(
     processing_class = tokenizer,
     train_dataset = dataset["train"],
     eval_dataset = dataset["test"], # Evaluate on first 2000 samples of test set
-    args = sft_config,
+    args = training_args,
 )
 
 # Add early stopping callback to trainer

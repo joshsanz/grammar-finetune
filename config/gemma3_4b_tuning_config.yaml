@@ -1,0 +1,65 @@
+# Base configuration for hyperparameter tuning
+# This will be dynamically modified by the tuning script
+
+model:
+  model_name: "unsloth/gemma-3-4b-it-unsloth-bnb-4bit"  # Will be overridden
+  max_seq_length: 2048
+  load_in_4bit: true
+  load_in_8bit: false
+  full_finetuning: false
+
+peft:
+  r: 16  # Will be overridden
+  target_modules:
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+  lora_alpha: 16  # Will be set equal to r
+  lora_dropout: 0
+  bias: "none"
+  use_gradient_checkpointing: "unsloth"
+  random_state: 3407
+  use_rslora: true
+  loftq_config: null
+
+training:
+  dataset_text_field: "text"
+  max_length: 768
+  per_device_train_batch_size: 8
+  per_device_eval_batch_size: 8
+  gradient_accumulation_steps: 4
+  warmup_steps: 25
+  max_steps: -1
+  num_train_epochs: 1
+  eval_strategy: "steps"
+  eval_steps: 50
+  learning_rate: 5e-5  # Will be overridden
+  logging_steps: 1
+  optim: "adamw_8bit"
+  weight_decay: 0.01  # Will be overridden
+  lr_scheduler_type: "cosine"  # Will be overridden
+  seed: 3407  # Will be overridden per trial
+  output_dir: "outputs"
+  save_steps: 50
+  save_total_limit: 3
+  report_to: "mlflow"
+
+data:
+  dataset_path: "data/gec-dataset-small"
+  system_prompt_path: "config/prompt.txt"
+  chat_template: "gemma3"
+
+inference:
+  temperature: 1.0
+  top_p: 0.95
+  top_k: 64
+  max_new_tokens: 125
+  cache_implementation: "dynamic"
+
+masking:
+  instruction_part: "<start_of_turn>user\n"
+  response_part: "<start_of_turn>model\n"
