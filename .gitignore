@@ -9,7 +9,16 @@ wheels/
 
 # Virtual environments
 .venv
-data/
+
+# Datasets
+data/**/*
+!data/README.md
+!data/books-to-dataset.py
+!data/epub-to-clean-md.py
+!data/insert_synthetic_errors.py
+!data/merge-all-datasets.py
+!data/subsample-dataset.py
+!data/test_synthetic_errors.py
 
 # Assistant files
 CLAUDE.md
@@ -21,4 +30,4 @@ GEMINI.md
 *.png
 outputs/
 unsloth_compiled_cache/
-
+.DS_Store
