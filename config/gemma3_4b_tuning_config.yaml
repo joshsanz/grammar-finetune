@@ -18,7 +18,7 @@ peft:
     - "gate_proj"
     - "up_proj"
     - "down_proj"
-  lora_alpha: 16  # Will be set equal to r
+  lora_alpha: 32  # Will be set equal to 2r
   lora_dropout: 0
   bias: "none"
   use_gradient_checkpointing: "unsloth"
@@ -29,14 +29,14 @@ peft:
 training:
   dataset_text_field: "text"
   max_length: 768
-  per_device_train_batch_size: 8
-  per_device_eval_batch_size: 8
+  per_device_train_batch_size: 4
+  per_device_eval_batch_size: 16
   gradient_accumulation_steps: 4
   warmup_steps: 25
   max_steps: -1
   num_train_epochs: 1
   eval_strategy: "steps"
-  eval_steps: 50
+  eval_steps: 25
   learning_rate: 5e-5  # Will be overridden
   logging_steps: 1
   optim: "adamw_8bit"
@@ -44,7 +44,7 @@ training:
   lr_scheduler_type: "cosine"  # Will be overridden
   seed: 3407  # Will be overridden per trial
   output_dir: "outputs"
-  save_steps: 50
+  save_steps: 500
   save_total_limit: 3
   report_to: "mlflow"
 
@@ -63,3 +63,13 @@ inference:
 masking:
   instruction_part: "<start_of_turn>user\n"
   response_part: "<start_of_turn>model\n"
+
+optuna:
+  seed: 12345
+  prune_min_evals: 4
+  prune_max_evals: 24
+  reduction_factor: 3
+  n_trials: 50
+  timeout: 57600  # 16 hours
+  direction: "minimize"
+  study_name: "gemma3_hyperparam_tuning"

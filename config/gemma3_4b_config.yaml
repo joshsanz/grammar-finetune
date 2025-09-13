@@ -6,7 +6,7 @@ model:
   full_finetuning: false
 
 peft:
-  r: 16
+  r: 8
   target_modules:
     - "q_proj"
     - "k_proj"
@@ -46,7 +46,7 @@ training:
   report_to: "mlflow"
 
 data:
-  dataset_path: "data/gec-dataset"
+  dataset_path: "data/gec-dataset-small"
   system_prompt_path: "config/prompt.txt"
   chat_template: "gemma3"
 

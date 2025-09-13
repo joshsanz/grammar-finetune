@@ -44,15 +44,18 @@ This script handles EPUB conversion, dataset creation, and merging automatically
 ### Unsloth Training
 The project uses Unsloth for efficient fine-tuning with LoRA (Low-Rank Adaptation) adapters. Training scripts are configured via YAML files in the `config/` directory.
 
-**Available Models:**
-- `gemma3-270m.py` - Training script for Gemma 270M model
-- `gemma3n-4b-conversational.py` - Training script for Gemma 4B conversational model
+**Main Training Scripts:**
+- `gemma3_finetune.py` - Main training script supporting all Gemma-3 model sizes
+- `hyperparam_tuning.py` - Hyperparameter optimization with Optuna (TPE sampling + pruning)
 
 **Key Features:**
 - 4-bit quantization for memory efficiency
 - LoRA adapters to reduce trainable parameters
 - Response-only training (ignores user input loss)
 - Support for multiple model architectures (Gemma-3, Llama, Mistral, etc.)
+- Real-time hyperparameter optimization with pruning
+- MLflow integration for experiment tracking
+- Modular training core for both CLI and optimization usage
 
 **Training Configuration:**
 Training parameters are specified in YAML config files (e.g., `config/gemma3_270m_config.yaml`):
@@ -94,3 +97,55 @@ python create-dataset-for-mlx.py -i data/gec-dataset -o data.mlx -p config/promp
 ```
 
 The MLX format uses ChatML structure with system/user/assistant roles for conversation-based training.
+
+## Training Commands
+
+### Basic Training
+Run training with default or custom configuration:
+```sh
+# Use default config (270M model)
+python gemma3_finetune.py
+
+# Use custom config
+python gemma3_finetune.py config/gemma3_4b_config.yaml
+```
+
+### Hyperparameter Optimization
+Run automated hyperparameter tuning with Optuna:
+```sh
+# Ensure MLflow environment is set
+source mlflow_environment
+
+# Start hyperparameter optimization
+python hyperparam_tuning.py
+```
+
+**Optimization Features:**
+- **TPE Sampler**: Efficient exploration of hyperparameter space
+- **Hyperband Pruner**: Intelligent early stopping of unpromising trials
+- **Real-time Pruning**: Trials stopped during training based on intermediate results
+- **MLflow Tracking**: All trials logged with detailed metrics and parameters
+- **In-process Training**: No subprocess overhead, better resource management
+
+## Project Structure
+
+```
+├── gemma3_finetune.py          # Main training script
+├── hyperparam_tuning.py        # Hyperparameter optimization
+├── analyze_sequence_lengths.py # Dataset analysis utility
+├── create-dataset-for-mlx.py   # MLX dataset conversion
+├── create-dataset.sh           # Automated dataset pipeline
+├── src/training/               # Core training modules
+│   ├── core.py                 # Main training logic
+│   ├── callbacks.py            # Optuna pruning callback
+│   ├── metrics.py              # Evaluation metrics
+│   └── types.py                # Data structures
+├── config/                     # Training configurations
+│   ├── gemma3_270m_config.yaml
+│   ├── gemma3_4b_config.yaml
+│   └── ...
+└── data/                       # Dataset processing scripts
+    ├── epub-to-clean-md.py
+    ├── books-to-dataset.py
+    └── ...
+```

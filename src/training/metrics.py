@@ -60,9 +60,9 @@ def compute_accuracy(eval_pred: EvalPrediction, tokenizer=None) -> dict:
     logger.info(f"Evaluation Accuracy: {accuracy:.4f} ({correct}/{total})")
 
     return {
-        "accuracy": accuracy,
-        "correct_predictions": correct,
-        "total_predictions": total
+        "eval_accuracy": accuracy,
+        "eval_correct_predictions": correct,
+        "eval_total_predictions": total
     }
 
 def compute_metrics(eval_pred: EvalPrediction, tokenizer=None) -> dict:
@@ -78,7 +78,9 @@ def compute_metrics(eval_pred: EvalPrediction, tokenizer=None) -> dict:
         dict: Combined metrics dictionary
     """
     # Get accuracy metrics
-    accuracy_metrics = compute_accuracy(eval_pred, tokenizer)
+    metrics = compute_accuracy(eval_pred, tokenizer)
+    loss = np.mean(eval_pred.losses) # type: ignore
+    metrics["eval_loss"] = loss
 
     # Return combined metrics
-    return accuracy_metrics
+    return metrics

@@ -1,7 +1,7 @@
 # MLflow environment variables setup
 export MLFLOW_EXPERIMENT_NAME="grammar-finetune"
-export MLFLOW_TRACKING_URI="http://192.168.0.20:32000"
+export MLFLOW_TRACKING_URI="http://localhost:32000"
 # export HF_MLFLOW_LOG_ARTIFACTS=1
 export MLFLOW_ENABLE_SYSTEM_METRICS_LOGGING=true
-export AWS_ACCESS_KEY_ID=h5JMmnjcMptf4I8W
-export AWS_SECRET_ACCESS_KEY=JvqZanuuyn2jep0GM9Osu0QSGvSVJGtU
+export AWS_ACCESS_KEY_ID=minioadmin
+export AWS_SECRET_ACCESS_KEY=miniadmin123

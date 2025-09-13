@@ -73,10 +73,17 @@ def _expand_corrections(examples):
 
 def load_clean_dataset(path, split='train'):
     dataset = load_dataset(path, split=split)
-    # For clean dataset, original and corrected are the same
-    dataset = dataset.map(lambda x: {'original': x['text'], 'corrected': x['text']},
-                          batched=True)
-    dataset = dataset.remove_columns(['text', 'chapter'])
+    # If dataset has a 'text' field, it is clean original content
+    if 'text' in dataset.column_names:
+        # For clean dataset, original and corrected are the same
+        dataset = dataset.map(lambda x: {'original': x['text'], 'corrected': x['text']},
+                            batched=True)
+        dataset = dataset.remove_columns(['text', 'chapter'])
+    elif 'original' in dataset.column_names and 'corrected' in dataset.column_names:
+        # Already in the desired format
+        pass
+    else:
+        raise ValueError(f"Clean dataset at {path} must have either 'text' or both 'original' and 'corrected' columns.")
     return dataset
 
 

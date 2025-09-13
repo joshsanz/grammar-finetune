@@ -8,8 +8,10 @@ The complete dataset creation pipeline follows this sequence:
 
 1. **EPUB to Markdown**: `epub-to-clean-md.py` - Convert EPUB books to clean markdown
 2. **Books to Dataset**: `books-to-dataset.py` - Convert markdown files to HuggingFace Dataset format  
-3. **Synthetic Error Insertion**: `insert-synthetic-errors.py` - Add realistic errors to clean text
+3. **Synthetic Error Insertion**: `insert_synthetic_errors.py` - Add realistic errors to clean text
 4. **Dataset Merging**: `merge-all-datasets.py` - Combine clean and error datasets
+5. **Dataset Subsampling**: `subsample-dataset.py` - Create smaller datasets for testing
+6. **Error Analysis**: `view_synthetic_diffs.py` - Visualize inserted errors
 
 ## Scripts
 
@@ -75,6 +77,33 @@ python merge-all-datasets.py -c clean_dataset_path -g config/datasets.txt -o out
 - `jhu-clsp/jfleg` - JFLEG grammar correction dataset  
 - `agentlans/grammar-correction` - Grammar correction pairs
 
+### subsample-dataset.py
+Creates smaller versions of datasets for quick testing and experimentation.
+
+**Usage:**
+```bash
+python subsample-dataset.py -i input_dataset/ -o output_dataset/ -f 0.05
+```
+
+**Parameters:**
+- `-i, --input`: Input dataset directory
+- `-o, --output`: Output dataset directory
+- `-f, --fraction`: Fraction of data to sample (e.g., 0.05 = 5%)
+
+### view_synthetic_diffs.py
+Visualizes synthetic errors by showing side-by-side comparison of original and corrected text with highlighted differences.
+
+**Usage:**
+```bash
+python view_synthetic_diffs.py -i synthetic_dataset/ [-n num_examples] [--html output.html]
+```
+
+**Features:**
+- **Terminal output**: Colored diff display in terminal
+- **HTML export**: Generate HTML report with highlighted differences
+- **Statistics**: Show error type distribution and frequency
+- **Sample size control**: Limit number of examples to review
+
 ## Testing
 
 ### test_synthetic_errors.py
@@ -138,6 +167,12 @@ Clean Dataset [source, chapter, text]
 Error Dataset [source, original, corrected]
     ↓ (merge-all-datasets.py) + External Datasets
 Final Training Dataset [source, original, corrected]
+    ↓ (subsample-dataset.py) [optional]
+Small Test Dataset [source, original, corrected]
+
+Analysis Tools:
+- view_synthetic_diffs.py: Visualize inserted errors
+- test_synthetic_errors.py: Validate error insertion quality
 ```
 
 ## Output Formats
