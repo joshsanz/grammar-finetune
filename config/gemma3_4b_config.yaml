@@ -1,12 +1,12 @@
 model:
-  model_name: "unsloth/gemma-3-4b-it-unsloth-bnb-4bit"
+  model_name: "unsloth/gemma-3-4b-pt-unsloth-bnb-4bit"
   max_seq_length: 2048
   load_in_4bit: true
   load_in_8bit: false
   full_finetuning: false
 
 peft:
-  r: 8
+  r: 32
   target_modules:
     - "q_proj"
     - "k_proj"
@@ -15,7 +15,7 @@ peft:
     - "gate_proj"
     - "up_proj"
     - "down_proj"
-  lora_alpha: 16
+  lora_alpha: 64
   lora_dropout: 0
   bias: "none"
   use_gradient_checkpointing: "unsloth"
@@ -29,24 +29,25 @@ training:
   per_device_train_batch_size: 8
   per_device_eval_batch_size: 8
   gradient_accumulation_steps: 4
-  warmup_steps: 25
+  warmup_steps: 100
   max_steps: -1
   num_train_epochs: 1
   eval_strategy: "steps"
-  eval_steps: 50
+  eval_steps: 100
+  n_eval_samples: 500
   learning_rate: 5e-5
   logging_steps: 1
   optim: "adamw_8bit"
-  weight_decay: 0.01
-  lr_scheduler_type: "cosine_with_min_lr"
+  weight_decay: 0.1
+  lr_scheduler_type: "linear"
   seed: 3407
   output_dir: "outputs"
-  save_steps: 50
+  save_steps: 100
   save_total_limit: 3
   report_to: "mlflow"
 
 data:
-  dataset_path: "data/gec-dataset-small"
+  dataset_path: "data/gec-dataset"
   system_prompt_path: "config/prompt.txt"
   chat_template: "gemma3"
 

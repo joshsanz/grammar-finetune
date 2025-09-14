@@ -37,6 +37,7 @@ training:
   num_train_epochs: 1
   eval_strategy: "steps"
   eval_steps: 25
+  n_eval_samples: 250
   learning_rate: 5e-5  # Will be overridden
   logging_steps: 1
   optim: "adamw_8bit"
@@ -67,7 +68,7 @@ masking:
 optuna:
   seed: 12345
   prune_min_evals: 4
-  prune_max_evals: 24
+  prune_max_evals: 18
   reduction_factor: 3
   n_trials: 50
   timeout: 57600  # 16 hours

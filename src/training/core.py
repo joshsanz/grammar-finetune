@@ -147,8 +147,9 @@ def prepare_dataset(config: Dict[str, Any], tokenizer) -> DatasetDict:
     )
 
     # Load dataset
+    n_eval_samples = config["training"].get("n_eval_samples", 500)
     dataset_train = load_dataset(config["data"]["dataset_path"], split="train")
-    dataset_test = load_dataset(config["data"]["dataset_path"], split="test[:250]")  # First 250 samples
+    dataset_test = load_dataset(config["data"]["dataset_path"], split=f"test[:{n_eval_samples}]")  # First N samples only to speed up eval
     dataset = DatasetDict({"train": dataset_train, "test": dataset_test})
 
     # Load system prompt

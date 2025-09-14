@@ -166,7 +166,7 @@ def create_objective(config_path: str):
         trial.set_user_attr("success", results["success"])
 
         # Return primary metric (accuracy) for optimization
-        return results["accuracy"]
+        return results["eval_loss"]
 
     return objective
 
