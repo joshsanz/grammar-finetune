@@ -62,6 +62,10 @@ def create_trial_config(trial_params: Dict[str, Any], base_config_path: str) -> 
     # Override PEFT parameters
     config["peft"]["r"] = trial_params["r"]
     config["peft"]["lora_alpha"] = 2 * trial_params["r"]  # Always equal to 2r
+    # If r is 128, reduce batch size to fit in memory and increase gradient accumulation
+    if trial_params["r"] == 128:
+        config["training"]["per_device_train_batch_size"] = max(1, config["training"]["per_device_train_batch_size"] // 2)
+        config["training"]["gradient_accumulation_steps"] = config["training"].get("gradient_accumulation_steps", 1) * 2
 
     # Override training parameters
     config["training"]["learning_rate"] = trial_params["learning_rate"]
