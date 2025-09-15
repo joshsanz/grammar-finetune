@@ -40,6 +40,7 @@ dependencies = [
     "optuna-integration[mlflow]>=4.5.0",
     #    "nvidia-ml-py>=13.580.82",
     "coloredlogs>=15.0.1",
+    "numba>=0.61.2",
 ]
 
 # [tool.uv.sources]
