@@ -45,6 +45,7 @@ training:
   save_steps: 100
   save_total_limit: 3
   report_to: "mlflow"
+  resume_from_checkpoint: null  # Set to checkpoint path or "auto" to auto-detect
 
 data:
   dataset_path: "data/gec-dataset"

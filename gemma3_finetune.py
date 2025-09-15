@@ -13,6 +13,7 @@ import yaml
 import logging, coloredlogs
 from transformers import TextStreamer
 import mlflow
+import argparse
 
 # Import the refactored training core
 from src.training import train_model
@@ -25,8 +26,19 @@ logger = logging.getLogger("GemmaFinetune")
 def main():
     """Main function for CLI usage of the training script."""
 
+    # Set up argument parser
+    parser = argparse.ArgumentParser(description="Fine-tune Gemma-3 model for grammar error correction")
+    parser.add_argument("config", nargs="?", default="config/gemma3_270m_config.yaml",
+                        help="Path to configuration file (default: config/gemma3_270m_config.yaml)")
+    parser.add_argument("--resume", "-r", type=str, metavar="CHECKPOINT_PATH",
+                        help="Resume training from checkpoint. Use 'auto' to auto-detect latest checkpoint, or provide specific checkpoint path")
+    parser.add_argument("--no-resume", action="store_true",
+                        help="Disable checkpoint resuming even if configured in the config file")
+
+    args = parser.parse_args()
+
     # Load configuration
-    config_path = sys.argv[1] if len(sys.argv) > 1 else "config/gemma3_270m_config.yaml"
+    config_path = args.config
     logger.info(f"Loading configuration from {config_path}")
 
     try:
@@ -36,12 +48,30 @@ def main():
         # Ensure learning rate is properly formatted as float
         config["training"]["learning_rate"] = float(config["training"]["learning_rate"])
 
+        # Handle resume arguments
+        if args.no_resume:
+            # Explicitly disable resume
+            config["training"]["resume_from_checkpoint"] = None
+            logger.warning("Checkpoint resuming disabled via --no-resume flag")
+        elif args.resume:
+            # Override config with CLI argument
+            config["training"]["resume_from_checkpoint"] = args.resume
+            logger.warning(f"Resume setting overridden via CLI: {args.resume}")
+
+        # Check for MLflow run ID warning when resuming (either via CLI or config)
+        resume_setting = config["training"].get("resume_from_checkpoint")
+        if resume_setting and not os.getenv("MLFLOW_RUN_ID"):
+            logger.warning("MLFLOW_RUN_ID not set. Training will be logged as a new run rather than continuing the original run. "
+                         "Set MLFLOW_RUN_ID environment variable to continue logging to the original MLflow run.")
+
         logger.info("Starting training with configuration:")
         logger.info(f"  Model: {config['model']['model_name']}")
         logger.info(f"  Dataset: {config['data']['dataset_path']}")
         logger.info(f"  Learning rate: {config['training']['learning_rate']}")
         logger.info(f"  Epochs: {config['training']['num_train_epochs']}")
         logger.info(f"  Batch size: {config['training']['per_device_train_batch_size']}")
+        if resume_setting:
+            logger.info(f"  Resume from checkpoint: {resume_setting}")
 
         # Call the refactored training function
         results = train_model(config, trial=None)
@@ -160,6 +190,7 @@ def save_model(results, config):
                 artifact_path="model",
                 registered_model_name=model_ft_name,
                 input_example=sample_input,
+                task="grammar_correction",
                 tags=json.loads(os.getenv("MLFLOW_TAGS", "{}"))
             )
             logger.info("Model logged to MLflow successfully")

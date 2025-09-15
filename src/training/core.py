@@ -17,6 +17,7 @@ import mlflow
 import mlflow.data
 from typing import Dict, Any, Optional, List
 import optuna
+import glob
 
 # Import custom modules
 from .types import TrainingResults
@@ -24,6 +25,83 @@ from .callbacks import OptunaCallback
 from .metrics import compute_metrics
 
 logger = logging.getLogger(__name__)
+
+
+def detect_checkpoint(output_dir: str) -> Optional[str]:
+    """
+    Detect the latest checkpoint in the output directory.
+
+    Args:
+        output_dir: Directory where checkpoints are saved
+
+    Returns:
+        Path to the latest checkpoint or None if no checkpoints found
+    """
+    checkpoint_pattern = os.path.join(output_dir, "checkpoint-*")
+    checkpoints = glob.glob(checkpoint_pattern)
+
+    if not checkpoints:
+        return None
+
+    # Sort by checkpoint number (extract number from checkpoint-XXXX)
+    def get_checkpoint_number(path):
+        try:
+            return int(os.path.basename(path).split('-')[-1])
+        except (ValueError, IndexError):
+            return 0
+
+    latest_checkpoint = max(checkpoints, key=get_checkpoint_number)
+
+    # Verify the checkpoint contains required files
+    required_files = ["config.json", "model.safetensors", "optimizer.pt", "scheduler.pt"]
+    missing_files = []
+    for file in required_files:
+        file_path = os.path.join(latest_checkpoint, file)
+        if not os.path.exists(file_path):
+            missing_files.append(file)
+
+    if missing_files:
+        logger.warning(f"Checkpoint {latest_checkpoint} is missing files: {missing_files}")
+        return None
+
+    return latest_checkpoint
+
+
+def get_resume_checkpoint(config: Dict[str, Any]) -> Optional[str]:
+    """
+    Get the checkpoint path to resume from based on configuration.
+
+    Args:
+        config: Configuration dictionary
+
+    Returns:
+        Path to checkpoint to resume from, or None if no resume
+    """
+    resume_setting = config["training"].get("resume_from_checkpoint")
+
+    if resume_setting is None:
+        return None
+
+    if resume_setting == "auto":
+        # Auto-detect latest checkpoint
+        output_dir = config["training"]["output_dir"]
+        checkpoint_path = detect_checkpoint(output_dir)
+        if checkpoint_path:
+            logger.info(f"Auto-detected checkpoint to resume from: {checkpoint_path}")
+        else:
+            logger.info("No checkpoints found for auto-resume")
+        return checkpoint_path
+
+    elif isinstance(resume_setting, str) and resume_setting.strip():
+        # Explicit checkpoint path
+        if os.path.exists(resume_setting):
+            logger.info(f"Resuming from specified checkpoint: {resume_setting}")
+            return resume_setting
+        else:
+            logger.error(f"Specified checkpoint path does not exist: {resume_setting}")
+            return None
+
+    return None
 
 
 def setup_mlflow_environment(config: Dict[str, Any], trial: Optional[optuna.Trial] = None) -> None:
@@ -342,9 +420,16 @@ def train_model(config: Dict[str, Any], trial: Optional[optuna.Trial] = None) ->
         # Create and configure trainer
         trainer = create_trainer(model, tokenizer, dataset, config, trial)
 
+        # Check for resume checkpoint
+        resume_checkpoint = get_resume_checkpoint(config)
+
         # Train the model
-        logger.info("Starting model training...")
-        trainer_stats = trainer.train()
+        if resume_checkpoint:
+            logger.info(f"Resuming training from checkpoint: {resume_checkpoint}")
+            trainer_stats = trainer.train(resume_from_checkpoint=resume_checkpoint)
+        else:
+            logger.info("Starting model training from scratch...")
+            trainer_stats = trainer.train()
         print(trainer_stats)
         print(list(trainer_stats.metrics.keys()))
 

@@ -190,7 +190,7 @@ Analysis Tools:
 ```json
 {
   "source": "book_directory_name",
-  "original": "Text with syntetic erors...",
+  "original": "Text with synthetic errors...",
   "corrected": "Text with synthetic errors..."
 }
 ```

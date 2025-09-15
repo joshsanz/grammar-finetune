@@ -31,3 +31,6 @@ GEMINI.md
 outputs/
 unsloth_compiled_cache/
 .DS_Store
+ollama_models/
+llama.cpp/
+

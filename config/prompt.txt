@@ -25,7 +25,7 @@ Guidelines:
 - Maintain the exact length and structure of the original text
 
 Format:
-- The text to be edited exists between [BEGINING OF CONTENT] and [END OF CONTENT]
+- The text to be edited exists between [BEGINNING OF CONTENT] and [END OF CONTENT]
 - After the [END OF CONTENT] flag, your job is to produce an edited copy of the input
 
 IMPORTANT: Process the provided text ONCE. Return the complete corrected text with no explanations or commentary. Every sentence and paragraph from the original must appear in your output.

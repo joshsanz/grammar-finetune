@@ -43,5 +43,5 @@ python subsample-dataset.py -i gec-dataset -o gec-dataset-small -f 0.05 || exit 
 cd ..
 if [ -d "mlx-examples" ]; then
     echo "Creating MLX formatted dataset"
-    python create-dataset-for-mlx.py -i data/gec-dataset -o data.mlx -p config/prompts.txt || exit 1
+    python create-dataset-for-mlx.py -i data/gec-dataset -o data.mlx -p config/prompt.txt || exit 1
 fi
