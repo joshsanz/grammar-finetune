@@ -13,7 +13,7 @@ cd data
 mkdir -p gec-dataset
 
 # Prepare markdown version of ebooks present
-for epub in *.epub; do
+for epub in epubs/*.epub; do
     [ -e "$epub" ] || continue
     base="${epub%.epub}"
     out_dir="${base}"
@@ -23,11 +23,21 @@ done
 
 # Convert book .mds to a single dataset
 echo "Creating clean example dataset from books"
-python books-to-dataset.py -o books/ -i $(ls *.epub | sed 's/\.epub//g' | tr '\n' ' ') -n 5 || exit 1
+python books-to-dataset.py -o books/ -i $(ls epubs/*.epub | sed 's/\.epub//g' | tr '\n' ' ') -n 5 || exit 1
+
+# Add synthetic errors to the clean dataset
+echo "Creating synthetic error dataset from clean examples"
+python insert_synthetic_errors.py \
+    -i books/ -o synthetic/ \
+    -c ../config/error_insertion_config.yaml || exit 1
 
 # Combine with existing GEC datasets
 echo "Merging all datasets into gec-dataset"
-python merge-all-datasets.py -o gec-dataset -c books -g ../config/datasets.txt || exit 1
+python merge-all-datasets.py -o gec-dataset -c synthetic/ -g ../config/datasets.txt || exit 1
+
+# Create a smaller dataset for quick testing
+echo "Creating small dataset for quick testing"
+python subsample-dataset.py -i gec-dataset -o gec-dataset-small -f 0.05 || exit 1
 
 # If mlx-examples exists, create a dataset formatted for mlx (.jsonl)
 cd ..

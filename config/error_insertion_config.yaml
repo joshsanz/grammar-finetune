@@ -1,0 +1,32 @@
+# Configuration for synthetic error insertion
+# Adjust these rates based on desired error frequency
+
+error_rates:
+  punctuation:
+    quote_spaces: 0.15          # Add spaces inside quotes: "hello" -> " hello "
+    missing_quotes: 0.15        # Remove quotes (first, last, or both)
+    punctuation_outside_quotes: 0.10  # Move punctuation outside quotes
+
+  typography:
+    dropped_letters: 0.2       # Remove random letters from words
+    swapped_letters: 0.2       # Swap adjacent letters
+    dropped_words: 0.1         # Remove entire words (not first/last)
+    swapped_words: 0.1         # Swap adjacent words
+
+  spacing:
+    spaces_around_punctuation: 0.1  # Add spaces before punctuation
+    missing_spaces: 0.1        # Remove spaces between words
+
+  homophones:
+    substitution_rate: 0.33     # Replace with common homophones
+
+  contractions:
+    dropped_nt: 0.1           # Remove "n't" from contractions
+
+  keyboard_neighbors:
+    substitution_rate: 0.25    # Replace with adjacent keyboard keys
+
+# General settings
+preserve_ratio: 0.1            # Fraction of examples to keep unchanged
+max_errors_per_chunk: 5        # Maximum errors per text chunk
+min_chunk_length: 50           # Minimum text length to apply errors

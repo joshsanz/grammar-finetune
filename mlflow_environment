@@ -1,4 +1,0 @@
-# MLflow environment variables setup
-export MLFLOW_EXPERIMENT_NAME="grammar-finetune"
-export MLFLOW_TRACKING_URI="http://192.168.0.20:32000"
-export HF_MLFLOW_LOG_ARTIFACTS=1

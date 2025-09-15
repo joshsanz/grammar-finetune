@@ -5,9 +5,9 @@
 
 import argparse
 import os
-import random
 from datasets import Dataset
 import spacy
+import numpy
 
 nlp = spacy.load("en_core_web_sm")
 
@@ -83,10 +83,19 @@ def dataset_generator(input_dirs, npara=5, max_words=500):
                         paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
                         i = 0
                         while i < len(paragraphs):
-                            chunk_size = random.randint(1, npara)
+                            # Use a poisson(3) distribution to choose chunk size, clipped at npara
+                            chunk_size = 0
+                            while chunk_size < 1 or chunk_size > npara:
+                                chunk_size = numpy.random.poisson(min(npara, 3))
                             chunk = '\n\n'.join(paragraphs[i:i + chunk_size])
 
-                            yield {"source": input_dir, "chapter": file, "text": chunk}
+                            # Further split chunk by max_words if needed
+                            if max_words > 0:
+                                sub_chunks = split_by_max_size(chunk, max_words=max_words)
+                                for sub_chunk in sub_chunks:
+                                    yield {"source": input_dir, "chapter": file, "text": sub_chunk}
+                            else:
+                                yield {"source": input_dir, "chapter": file, "text": chunk}
                             i += max(1, chunk_size - 1)  # Overlap by 1 paragraph
                     print(f"Processed {file_path}")
             print(f"Completed directory {input_dir}")
@@ -117,6 +126,7 @@ def parse_args():
     parser.add_argument('-i', '--input_dirs', nargs='+', required=True, help='Input directories containing markdown files.')
     parser.add_argument('-o', '--output_dir', required=True, help='Output directory to save the dataset.')
     parser.add_argument('-n', '--num-paragraphs', type=int, default=5, help='Maximum number of paragraphs per chunk.')
+    parser.add_argument('-m', '--max-words', type=int, default=500, help='Maximum number of words per chunk (-1 to disable).')
     return parser.parse_args()
 
 

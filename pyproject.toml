@@ -36,6 +36,10 @@ dependencies = [
     "mlflow>=3.3.2",
     "psutil>=7.0.0",
     "boto3>=1.40.29",
+    "optuna>=4.5.0",
+    "optuna-integration[mlflow]>=4.5.0",
+    #    "nvidia-ml-py>=13.580.82",
+    "coloredlogs>=15.0.1",
 ]
 
 # [tool.uv.sources]
