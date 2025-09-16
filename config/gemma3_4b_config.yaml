@@ -1,5 +1,6 @@
 model:
-  model_name: "unsloth/gemma-3-4b-pt-unsloth-bnb-4bit"
+  # model_name: "unsloth/gemma-3-4b-pt-unsloth-bnb-4bit"
+  model_name: "./gemma-3-4b-pt-gec"
   max_seq_length: 2048
   load_in_4bit: true
   load_in_8bit: false
@@ -29,13 +30,13 @@ training:
   per_device_train_batch_size: 8
   per_device_eval_batch_size: 8
   gradient_accumulation_steps: 4
-  warmup_steps: 100
+  warmup_steps: 200
   max_steps: -1
-  num_train_epochs: 1
+  num_train_epochs: 2
   eval_strategy: "steps"
   eval_steps: 100
   n_eval_samples: 500
-  learning_rate: 5e-5
+  learning_rate: 2e-5
   logging_steps: 1
   optim: "adamw_8bit"
   weight_decay: 0.1
@@ -46,6 +47,8 @@ training:
   save_total_limit: 3
   report_to: "mlflow"
   resume_from_checkpoint: null  # Set to checkpoint path or "auto" to auto-detect
+  early_stopping_patience: 3
+  # logging_dir: "outputs/runs/Sep14_16-39-27_yellowstone-ubuntu"
 
 data:
   dataset_path: "data/gec-dataset"
